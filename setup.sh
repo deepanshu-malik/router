@@ -79,5 +79,5 @@ docker run -t -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend \
 echo -e "\nStep 3: Starting OSRM routing engine"
 echo "Server will run on port 5000"
 echo "Press Ctrl+C to stop the server"
-docker run -t -i -p 5000:5000 -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend \
+docker run -t -i -d -p 5002:5000 -v "${PWD}:/data" ghcr.io/project-osrm/osrm-backend \
     osrm-routed --algorithm mld "/data/$BASE_NAME"

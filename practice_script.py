@@ -1,3 +1,6 @@
+# Folium wants the coordinates in the order of latitude, longitude
+# OSM wants the coordinates in the order of longitude, latitude
+
 import folium
 import requests
 
@@ -5,18 +8,21 @@ from pydantic import BaseModel
 
 service = 'route'
 version = 'v1'
-profile = 'cyling'
-host = 'http://localhost:5000'
+profile = 'cycling'
+host = 'http://localhost:5001'
+
+# http://localhost:5001/route/v1/driving/77.00452566146852,29.007047247906737;77.00460076332092,29.007033173388347?overview=false&alternatives=true&steps=true
 
 url = f'{host}/{service}/{version}/{profile}'
 map_path = '/mnt/c/Users/Deepanshu/projects/router/map.html'
 
 class Point(BaseModel):
-    latitude: float
     longitude: float
+    latitude: float
 
     def __str__(self):
-        return f'{self.latitude},{self.longitude}'
+        return f'{self.longitude},{self.latitude}'
+
 
 # 29.00729086187103, 77.00476960714381
 mine = Point(latitude=29.00729086187103, longitude=77.00476960714381)
@@ -39,7 +45,7 @@ random_2 = Point(latitude=33.5139385272305, longitude=75.20363865249003)
 random_center = Point(latitude=34.51337424423889, longitude=75.37647791484817)
 
 
-points = [mine, vinit, dahiya, kogta, cyber_hub]
+points = [mine, kogta]
 random_points = [random_1, random_2, random_center]
 
 # points = random_points
@@ -69,7 +75,7 @@ response = requests.get(f'{url}/{coordinates}', params={
 
 if response.status_code == 200:
     data = response.json()
-    # print(data)
+    print(response.url)
     # Extract the route geometry from the response
     route_geometry = data['routes'][0]['geometry']
     print(route_geometry)
@@ -83,8 +89,7 @@ if response.status_code == 200:
     route_coordinates = [[point[1], point[0]] for point in data['routes'][0]['geometry']['coordinates']]
     folium.PolyLine(
         locations=route_coordinates, color='blue', weight=5, popup=popup).add_to(folium_map)
-    print(route_coordinates)
-    print(points)
+
     # Save the map to an HTML file
     folium_map.save(map_path)
 else:

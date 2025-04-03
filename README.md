@@ -27,12 +27,12 @@ A Docker-based OSRM routing engine with bicycle profile optimization for India a
 
 1. **Make the setup script executable**:
    ```bash
-   chmod +x setup_router.sh
+   chmod +x setup.sh
    ```
 
 2. **Run the setup script**:
    ```bash
-   ./setup_router.sh
+   ./setup.sh
    ```
 
 ---
