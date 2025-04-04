@@ -97,6 +97,18 @@ Routing from Connaught Place to India Gate:
 http://localhost:5000/route/v1/bike/77.2183,28.6315;77.2298,28.6129
 ```
 
+### API Documentation
+For detailed information about the available APIs, access the Swagger API documentation at:
+```
+http://localhost:8000/docs
+```
+
+### Map and Route Visualization
+To visualize the map and routes, open the following URL in your browser:
+```
+http://localhost:8000/static/index.html
+```
+
 ---
 
 ## Customization
