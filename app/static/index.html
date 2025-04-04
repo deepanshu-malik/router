@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OSRM Route Viewer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <style>
+        #map { height: 500px; }
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        #route-info { margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>OSRM Route Viewer</h1>
+    
+    <!-- Map container -->
+    <div id="map"></div>
+
+    <div id="route-info">
+        <label for="start">Start Location (Lat, Lon):</label>
+        <input type="text" id="start" value="28.6139, 77.2090" />
+        <br>
+        <label for="end">End Location (Lat, Lon):</label>
+        <input type="text" id="end" value="30.6613, 76.8203" />
+        <br>
+        <button onclick="getRoute()">Get Route</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-polylinedecoder/dist/leaflet-polylinedecoder.js"></script>
+    <script>
+        // Initialize the map
+        const map = L.map('map').setView([20.5937, 78.9629], 5);  // Default to India area
+        
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+        }).addTo(map);
+
+        let polylineLayer = L.polyline([]).addTo(map);  // Placeholder for route
+        let startMarker, endMarker;  // Markers for start and end points
+
+        // Function to get the route from the backend
+        function getRoute() {
+            const start = document.getElementById('start').value.split(',');
+            const end = document.getElementById('end').value.split(',');
+
+            const startLat = parseFloat(start[0]);
+            const startLon = parseFloat(start[1]);
+            const endLat = parseFloat(end[0]);
+            const endLon = parseFloat(end[1]);
+
+            const url = `http://127.0.0.1:8000/api/v1/routes`;
+            
+            // Prepare request body
+            const requestData = {
+                start_lat: startLat,
+                start_lon: startLon,
+                end_lat: endLat,
+                end_lon: endLon
+            };
+            
+            fetch(url, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.route) {  // Check if the route data exists
+                    console.log(data);
+                    const geoJsonLayer = L.geoJSON(data.route.geometry);  // Use GeoJSON data
+                    polylineLayer.setLatLngs(geoJsonLayer.getLayers()[0].getLatLngs());  // Update the route on the map
+                    map.fitBounds(polylineLayer.getBounds());  // Zoom to fit the route
+
+                    // Add or update markers for start and end points
+                    if (startMarker) map.removeLayer(startMarker);
+                    if (endMarker) map.removeLayer(endMarker);
+                    startMarker = L.marker([startLat, startLon]).addTo(map).bindPopup("Start Point").openPopup();
+                    endMarker = L.marker([endLat, endLon]).addTo(map).bindPopup("End Point").openPopup();
+
+                    // Clear previous route information
+                    const routeInfoContainer = document.getElementById('route-info');
+                    routeInfoContainer.innerHTML = `
+                        <label for="start">Start Location (Lat, Lon):</label>
+                        <input type="text" id="start" value="${startLat}, ${startLon}" />
+                        <br>
+                        <label for="end">End Location (Lat, Lon):</label>
+                        <input type="text" id="end" value="${endLat}, ${endLon}" />
+                        <br>
+                        <button onclick="getRoute()">Get Route</button>
+                    `;
+
+                    // Display additional route information
+                    const routeInfo = `
+                        <p><strong>Distance:</strong> ${data.distance} meters</p>
+                        <p><strong>Duration:</strong> ${data.duration} seconds</p>
+                        <p><strong>Safety Score:</strong> ${data.safety_score.toFixed(2)}</p>
+                        <p><strong>Bike Lane Percentage:</strong> ${(data.bike_lane_percentage * 100).toFixed(2)}%</p>
+                        <p><strong>Hazards:</strong> ${data.hazards.join(', ') || 'None'}</p>
+                    `;
+                    routeInfoContainer.innerHTML += routeInfo;
+                } else {
+                    alert("Error fetching route: Invalid response format");
+                }
+            });
+        }
+    </script>
+</body>
+</html>
