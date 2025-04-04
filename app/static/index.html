@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bike Route Optimizer | OSRM Viewer</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #4361ee;
+            --primary-dark: #3a56d4;
+            --secondary: #3f37c9;
+            --success: #4cc9f0;
+            --danger: #f72585;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gray: #6c757d;
+            --border-radius: 12px;
+            --box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            --transition: all 0.3s ease;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f5f7ff;
+            color: var(--dark);
+            line-height: 1.6;
+            padding: 0;
+            margin: 0;
+        }
+
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            color: white;
+            padding: 2rem 0;
+            margin-bottom: 2rem;
+            text-align: center;
+            border-radius: 0 0 var(--border-radius) var(--border-radius);
+            box-shadow: var(--box-shadow);
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 992px) {
+            .app-container {
+                grid-template-columns: 1fr;
+            }
+            
+            .map-stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .map-stats-container {
+            display: grid;
+            grid-template-columns: 1fr 300px;
+            gap: 1.5rem;
+        }
+
+        @media (max-width: 768px) {
+            .map-stats-container {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .control-panel {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--box-shadow);
+            height: fit-content;
+        }
+
+        .control-panel h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-panel h2 i {
+            font-size: 1.3rem;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+            color: var(--dark);
+        }
+
+        .form-control {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: 1px solid #e0e0e0;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            transition: var(--transition);
+        }
+
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(67, 97, 238, 0.2);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: var(--border-radius);
+            font-size: 1rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            width: 100%;
+        }
+
+        .btn:hover {
+            background-color: var(--primary-dark);
+            transform: translateY(-1px);
+        }
+
+        .btn i {
+            font-size: 1rem;
+        }
+
+        #map {
+            height: 700px; /* Increased from 500px to 700px */
+            border-radius: var(--border-radius);
+            box-shadow: var(--box-shadow);
+            z-index: 1;
+        }
+
+        .route-stats-sidebar {
+            background: white;
+            border-radius: var(--border-radius);
+            padding: 1.5rem;
+            box-shadow: var(--box-shadow);
+            height: fit-content;
+        }
+
+        .route-stats-sidebar h2 {
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: var(--primary);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .stat-card {
+            background: var(--light);
+            border-radius: var(--border-radius);
+            padding: 1rem;
+            text-align: center;
+        }
+
+        .stat-card h3 {
+            font-size: 1.5rem;
+            color: var(--primary);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card p {
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        .hazards-list {
+            margin-top: 1.5rem;
+        }
+
+        .hazards-list h3 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: var (--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .hazard-item {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 0.75rem;
+            background: var(--light);
+            border-radius: var(--border-radius);
+            margin-bottom: 0.75rem;
+        }
+
+        .hazard-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .hazard-icon.theft {
+            background-color: var(--danger);
+        }
+
+        .hazard-icon.waterlogging {
+            background-color: var(--success);
+        }
+
+        .hazard-icon.pothole {
+            background-color: #ff9f1c;
+        }
+
+        .hazard-icon.construction {
+            background-color: var(--gray);
+        }
+
+        .hazard-details {
+            flex-grow: 1;
+        }
+
+        .hazard-details h4 {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .hazard-details p {
+            font-size: 0.85rem;
+            color: var(--gray);
+        }
+
+        #legend {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            position: absolute; /* Keep it inside the map */
+            bottom: 20px;
+            right: 20px; /* Moved to the right corner */
+            z-index: 1000;
+            box-shadow: var(--box-shadow);
+            border: 1px solid #e0e0e0;
+            max-width: 200px;
+        }
+
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .legend-color.start {
+            background-color: var(--primary); /* Start Point color */
+        }
+
+        .legend-color.end {
+            background-color: var(--danger); /* End Point color */
+        }
+
+        .legend-color.route {
+            width: 16px;
+            height: 4px;
+            background-color: var(--success); /* Route color */
+        }
+
+        #loading-spinner {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 1rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: white;
+            font-size: 1.2rem;
+            font-weight: 500;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 3rem;
+            padding: 1.5rem;
+            color: var(--gray);
+            font-size: 0.9rem;
+        }
+
+        /* Custom marker styles */
+        .start-marker {
+            background-color: var(--primary);
+            border-radius: 50%;
+            border: 2px solid white;
+            width: 20px;
+            height: 20px;
+        }
+
+        .end-marker {
+            background-color: var(--danger);
+            border-radius: 50%;
+            border: 2px solid white;
+            width: 20px;
+            height: 20px;
+        }
+
+        .no-hazards {
+            text-align: center;
+            padding: 1rem;
+            color: var(--gray);
+        }
+
+        .no-hazards i {
+            font-size: 2rem;
+            color: var(--success);
+            margin-bottom: 0.5rem;
+        }
+
+        .legend-item {
+            display: flex; /* Use flexbox to align items */
+            align-items: center; /* Vertically align color ball and text */
+            gap: 0.5rem; /* Add spacing between color ball and text */
+            margin-bottom: 0.5rem;
+        }
+
+        #legend h4 {
+            font-size: 1rem;
+            margin-bottom: 1rem; /* Increased margin for proper spacing */
+            color: var(--dark);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1><i class="fas fa-route"></i> Bike Route Optimizer</h1>
+            <p>Get the safest and most efficient routes for 2-wheelers in India focusing on Delhi/NCR with real-time hazard detection</p>
+        </div>
+    </header>
+
+    <div class="container">
+        <div class="app-container">
+            <div class="control-panel">
+                <h2><i class="fas fa-sliders-h"></i> Route Controls</h2>
+                <div class="form-group">
+                    <label for="start"><i class="fas fa-map-marker-alt"></i> Start Location</label>
+                    <input type="text" id="start" class="form-control" placeholder="28.6139, 77.2090" value="28.6139, 77.2090">
+                </div>
+                <div class="form-group">
+                    <label for="end"><i class="fas fa-flag-checkered"></i> End Location</label>
+                    <input type="text" id="end" class="form-control" placeholder="28.6280, 77.2298" value="28.6280, 77.2298">
+                </div>
+                <button class="btn" onclick="getRoute()">
+                    <i class="fas fa-directions"></i> Calculate Route
+                </button>
+            </div>
+
+            <div class="map-stats-container">
+                <div>
+                    <div id="map">
+                        <div id="legend">
+                            <h4><i class="fas fa-map-signs"></i> Legend</h4>
+                            <div class="legend-item">
+                                <div class="legend-color start"></div>
+                                <span>Start Point</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color end"></div>
+                                <span>End Point</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-color route"></div>
+                                <span>Route</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="route-stats-sidebar" id="route-results" style="display: none;">
+                    <h2><i class="fas fa-chart-line"></i> Route Stats</h2>
+                    <div class="stats-grid" id="route-stats">
+                        <!-- Filled dynamically -->
+                    </div>
+                    
+                    <div class="hazards-list">
+                        <h3><i class="fas fa-exclamation-triangle"></i> Hazards</h3>
+                        <div id="hazards-container">
+                            <!-- Filled dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-spinner" style="display: none;">
+        <div class="spinner"></div>
+        <div class="loading-text">Calculating optimal route...</div>
+    </div>
+
+    <footer>
+        <p>© 2025 Delhi Bike Route Optimizer | Powered by OSRM & OpenStreetMap</p>
+    </footer>
+
+    <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-polylinedecoder/dist/leaflet-polylinedecoder.js"></script>
+    <script>
+        // Initialize the map centered on Delhi
+        const map = L.map('map').setView([28.6139, 77.2090], 12);
+        
+        // Add OpenStreetMap tiles with a custom style
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+            maxZoom: 18,
+        }).addTo(map);
+
+        // Create a feature group to hold our route elements
+        const routeLayer = L.featureGroup().addTo(map);
+        let startMarker, endMarker, routeLine;
+
+        // Show loading spinner
+        function showLoadingSpinner() {
+            document.getElementById('loading-spinner').style.display = 'flex';
+        }
+
+        // Hide loading spinner
+        function hideLoadingSpinner() {
+            document.getElementById('loading-spinner').style.display = 'none';
+        }
+
+        // Function to create a custom marker icon
+        function createMarkerIcon(color) {
+            return L.divIcon({
+                className: '',
+                html: `<div style="background-color: ${color}; border: 2px solid white; border-radius: 50%; width: 20px; height: 20px;"></div>`,
+                iconSize: [20, 20]
+            });
+        }
+
+        // Function to get the route from the backend
+        async function getRoute() {
+            showLoadingSpinner();
+            
+            try {
+                const start = document.getElementById('start').value.split(',');
+                const end = document.getElementById('end').value.split(',');
+
+                const startLat = parseFloat(start[0].trim());
+                const startLon = parseFloat(start[1].trim());
+                const endLat = parseFloat(end[0].trim());
+                const endLon = parseFloat(end[1].trim());
+
+                const url = `http://127.0.0.1:8000/api/v1/routes`;
+                
+                const requestData = {
+                    start_lat: startLat,
+                    start_lon: startLon,
+                    end_lat: endLat,
+                    end_lon: endLon
+                };
+                
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.route) {
+                    console.log("Route data:", data);
+                    
+                    // Clear previous route elements
+                    routeLayer.clearLayers(); // Ensure previous route and markers are removed
+                    
+                    // Add new route line (using GeoJSON)
+                    const geoJsonLayer = L.geoJSON(data.route.geometry, {
+                        style: {
+                            color: '#4cc9f0',
+                            weight: 6,
+                            opacity: 0.8
+                        }
+                    });
+                    routeLayer.addLayer(geoJsonLayer);
+                    
+                    // Add start and end markers
+                    startMarker = L.marker([startLat, startLon], {
+                        icon: createMarkerIcon('#4361ee')
+                    }).addTo(routeLayer).bindPopup("Start Point");
+                    
+                    endMarker = L.marker([endLat, endLon], {
+                        icon: createMarkerIcon('#f72585')
+                    }).addTo(routeLayer).bindPopup("End Point");
+                    
+                    // Fit map to show the entire route
+                    map.fitBounds(routeLayer.getBounds());
+                    
+                    // Update the route information panel
+                    updateRouteInfo(data, startLat, startLon, endLat, endLon);
+                    
+                    // Show the results panel
+                    document.getElementById('route-results').style.display = 'block';
+                } else {
+                    throw new Error("Invalid response format: Missing route data");
+                }
+            } catch (error) {
+                console.error("Error fetching route:", error);
+                alert(`Error: ${error.message}`);
+            } finally {
+                hideLoadingSpinner();
+            }
+        }
+
+        // Function to update the route information panel
+        function updateRouteInfo(data, startLat, startLon, endLat, endLon) {
+            // Update the stats cards
+            document.getElementById('route-stats').innerHTML = `
+                <div class="stat-card">
+                    <h3>${(data.distance / 1000).toFixed(1)}</h3>
+                    <p>km</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${Math.floor(data.duration / 60)}</h3>
+                    <p>minutes</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${(data.safety_score * 100).toFixed(0)}%</h3>
+                    <p>safety</p>
+                </div>
+                <div class="stat-card">
+                    <h3>${data.bike_lane_percentage.toFixed(0)}%</h3>
+                    <p>bike lanes</p>
+                </div>
+            `;
+            
+            // Update the hazards list
+            const hazardsContainer = document.getElementById('hazards-container');
+            if (data.hazards && data.hazards.length > 0) {
+                hazardsContainer.innerHTML = data.hazards.map(hazard => `
+                    <div class="hazard-item">
+                        <div class="hazard-icon ${hazard.type}">
+                            <i class="fas fa-${getHazardIcon(hazard.type)}"></i>
+                        </div>
+                        <div class="hazard-details">
+                            <h4>${formatHazardType(hazard.type)}</h4>
+                            <p>${(hazard.distance_ratio * data.distance / 1000).toFixed(1)} km</p>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                hazardsContainer.innerHTML = `
+                    <div class="no-hazards">
+                        <i class="fas fa-check-circle"></i>
+                        <p>No hazards detected</p>
+                    </div>
+                `;
+            }
+            
+            // Update the input fields with the used coordinates
+            document.getElementById('start').value = `${startLat.toFixed(6)}, ${startLon.toFixed(6)}`;
+            document.getElementById('end').value = `${endLat.toFixed(6)}, ${endLon.toFixed(6)}`;
+        }
+
+        // Helper function to get Font Awesome icon for hazard type
+        function getHazardIcon(type) {
+            const icons = {
+                'theft': 'user-shield',
+                'waterlogging': 'umbrella',
+                'pothole': 'road',
+                'construction': 'hard-hat'
+            };
+            return icons[type] || 'exclamation-circle';
+        }
+
+        // Helper function to format hazard type for display
+        function formatHazardType(type) {
+            return type.charAt(0).toUpperCase() + type.slice(1);
+        }
+
+        let isSettingStartPoint = true; // Toggle between setting start and end points
+
+        // Add click event listener to the map
+        map.on('click', function (e) {
+            const { lat, lng } = e.latlng;
+
+            if (isSettingStartPoint) {
+                // Clear the previous route when a new starting point is selected
+                routeLayer.clearLayers();
+
+                // Set start point
+                document.getElementById('start').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                if (startMarker) routeLayer.removeLayer(startMarker); // Remove previous start marker
+                startMarker = L.marker([lat, lng], {
+                    icon: createMarkerIcon('#4361ee')
+                }).addTo(routeLayer).bindPopup("Start Point");
+            } else {
+                // Set end point
+                document.getElementById('end').value = `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+                if (endMarker) routeLayer.removeLayer(endMarker); // Remove previous end marker
+                endMarker = L.marker([lat, lng], {
+                    icon: createMarkerIcon('#f72585')
+                }).addTo(routeLayer).bindPopup("End Point");
+            }
+
+            // Toggle between start and end point selection
+            isSettingStartPoint = !isSettingStartPoint;
+        });
+
+        // Function to update marker based on input coordinates
+        function updateMarkerFromInput(isStartPoint) {
+            const inputId = isStartPoint ? 'start' : 'end';
+            const inputValue = document.getElementById(inputId).value.trim();
+            const [lat, lng] = inputValue.split(',').map(coord => parseFloat(coord.trim()));
+
+            if (!isNaN(lat) && !isNaN(lng)) {
+                const markerIcon = isStartPoint ? createMarkerIcon('#4361ee') : createMarkerIcon('#f72585');
+                const markerPopup = isStartPoint ? "Start Point" : "End Point";
+
+                if (isStartPoint) {
+                    if (startMarker) routeLayer.removeLayer(startMarker); // Remove previous start marker
+                    startMarker = L.marker([lat, lng], { icon: markerIcon })
+                        .addTo(routeLayer)
+                        .bindPopup(markerPopup);
+                } else {
+                    if (endMarker) routeLayer.removeLayer(endMarker); // Remove previous end marker
+                    endMarker = L.marker([lat, lng], { icon: markerIcon })
+                        .addTo(routeLayer)
+                        .bindPopup(markerPopup);
+                }
+
+                // Ensure the route is not cleared when adding a new marker
+                if (startMarker && endMarker) {
+                    // Keep both markers on the map
+                    routeLayer.addLayer(startMarker);
+                    routeLayer.addLayer(endMarker);
+                }
+
+                // Optionally, adjust the map view to include the new marker
+                map.setView([lat, lng], 12);
+            } else {
+                alert(`Invalid ${isStartPoint ? 'start' : 'end'} coordinates. Please enter valid latitude and longitude.`);
+            }
+        }
+
+        // Add event listeners to input fields to update markers
+        document.getElementById('start').addEventListener('change', () => updateMarkerFromInput(true));
+        document.getElementById('end').addEventListener('change', () => updateMarkerFromInput(false));
+    </script>
+</body>
+</html>
